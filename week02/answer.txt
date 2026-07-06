@@ -1,0 +1,28 @@
+
+TASK 4.2: KHẢO SÁT BẢN ĐỒ BỘ NHỚ (MEMORY MAP)
+
+Vị trí phân bổ các biến vào các phân vùng bộ nhớ vật lý:
+1. BIKE_MODEL     --> Phân vùng .rodata (Nằm trong bộ nhớ Flash/ROM)
+   - Giải thích: Biến toàn cục được khai báo với hằng số const, giá trị cố định không đổi trong suốt quá trình thực thi nên được bảo vệ tại vùng Read-Only Data.
+2. total_odometer --> Phân vùng .bss (Nằm trong bộ nhớ RAM)
+   - Giải thích: Biến toàn cục được khởi tạo bằng giá trị 0, hệ thống sẽ tối ưu bằng cách ghi nhận kích thước và địa chỉ vùng, sau đó Startup code xóa trắng về 0 khi boot chip để tiết kiệm dung lượng Flash.
+3. current_speed  --> Phân vùng Stack (Nằm trong bộ nhớ RAM)
+   - Giải thích: Đây là biến cục bộ (local variable) khai báo trong hàm main(), được tự động cấp phát khi vào hàm và giải phóng ngay khi ra khỏi scope của hàm.
+
+
+TASK 4.3: PHÂN TÍCH HIỆN TƯỢNG CRASH / HARD FAULT
+
+- Trên môi trường máy tính (GCC Compiler):
+  Khi hàm crash_simulation được kích hoạt, chương trình gọi đệ quy vô hạn mà không có điều kiện dừng. Việc này khiến các Stack frame liên tục bị đẩy vào bộ nhớ vượt quá giới hạn vùng đệm hệ thống cấp cho tiến trình. Hệ điều hành máy tính ngay lập tức can thiệp chặn đứng để bảo vệ hệ thống, gây sụp đổ chương trình với thông báo lỗi: "Segmentation fault (core dumped)" hoặc "Stack overflow".
+  
+- Trên Vi điều khiển thực tế (Cortex-M):
+  Khi Stack phình to vượt quá biên giới hạn thiết lập trong file Linker Script (.ld) và đè lên các vùng nhớ khác, CPU của vi điều khiển sẽ kích hoạt bộ bẫy lỗi phần cứng hệ thống và lập tức nhảy vào hàm ngắt ngoại lệ: HardFault_Handler (hoặc MemManage_Handler nếu hệ thống có bật khối bảo vệ bộ nhớ MPU).
+
+
+TASK 5: TỐI ƯU HÓA DUNG LƯỢNG VỚI LINKER SCRIPT
+
+- Lựa chọn: Chọn CÁCH 1 (uint16_t trip_history[20000] = {0};) chương trình sẽ biên dịch thành công.
+
+- Giải thích bản chất:
+  + Ở Cách 1: Mảng được khởi tạo bằng 0 nên bộ biên dịch xếp nó vào phân vùng .bss. Bản chất phân vùng .bss trong file thực thi vật lý (.bin/.hex) KHÔNG CHIẾM DUNG LƯỢNG trên bộ nhớ Flash, nó chỉ cần vài byte để lưu thông tin về địa chỉ bắt đầu và độ rộng vùng nhớ. Khi khởi động, mã Startup Code mới cấp phát và xóa trắng 40KB này trực tiếp trên RAM (RAM còn trống tới 128KB nên hoàn toàn thoải mái). Do đó Flash (trống 20KB) không bị quá tải.
+  + Ở Cách 2: Mảng được khởi tạo bằng giá trị khác không {1, 2, 3}, bắt buộc phải xếp vào phân vùng .data. Phân vùng .data BẮT BUỘC PHẢI LƯU TRỮ TOÀN BỘ GIÁ TRỊ THÔ BAN ĐẦU (đầy đủ cả 40KB dữ liệu) vào Flash để copy sang RAM khi cấp nguồn. Vì Flash chỉ còn trống 20KB mà mảng chiếm đến 40KB nên Linker sẽ báo lỗi tràn bộ nhớ (ví dụ: region 'FLASH' overflowed) và biên dịch thất bại.
