@@ -9,6 +9,10 @@ typedef union {
     uint16_t raw_value;
     struct {
         // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
+     uint16_t PWR_ON : 1;
+     uint16_t ASSIST_LEVEL : 2;
+     Uint16_t LIGHT_BRIGHT : 3;
+     uint16_t RESERVED : 9;
 
 
 
@@ -31,7 +35,11 @@ void drive_sport(void) {
 }
 
 // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
+void (*drive_modes[])(void) = {
+    drive_eco,
+    drive_normal,
+    drive_sport
+};
 
 
 
@@ -44,7 +52,11 @@ void Battery_Monitor(void (*overheat_cb)(void)) {
     int battery_temp = 45; 
     
     // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
+if (battery_temp > 40) {
+    if (overheat_cb != NULL) {
+        overheat_cb();
+    }
+}
 
 
 
@@ -63,7 +75,9 @@ uint32_t total_odometer = 0;
 
 void crash_simulation(void) {
     // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
+uint8_t buffer[1024];
+buffer[0] = 0;
+crash_simualtion();
 
 
 
@@ -85,8 +99,15 @@ int main() {
     // 2. Test Task 2
     printf("ENGINE CONTROLLING: \n");
     // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
+uint8_t current_mode = my_bike.fields.ASSIST_LEVEL;
+uint8_t max_modes = sizeof(drive_modes) / sizeof(drive_modes[0]);
 
-
+if (current_mode < max_modes) {
+    drive_modes[current_mode]();
+} else {
+    printf("Error : Invalid Assist Level!\n");
+}
+printf("\n"); 
 
 
     // HỌC VIÊN KẾT THÚC VIẾT CODE
